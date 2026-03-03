@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARV DDI Command Center</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com');
+        body { font-family: 'Inter', sans-serif; scroll-behavior: smooth; }
+        .ai-glow { box-shadow: 0 0 20px rgba(59, 130, 246, 0.2); border: 1px solid rgba(59, 130, 246, 0.1); }
+        .loading-shimmer {
+            background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+
+<nav class="bg-slate-900 text-white p-4 sticky top-0 z-50 shadow-lg">
+    <div class="max-w-7xl mx-auto flex justify-between items-center">
+        <div class="flex items-center gap-2">
+            <span class="text-2xl">💊</span>
+            <span class="font-bold text-lg tracking-tight uppercase italic">DDI Command Center</span>
+        </div>
+        <div class="flex gap-4 text-xs font-bold uppercase">
+            <a href="#ai-tools" class="text-blue-400">Auditor</a>
+            <a href="#toxicity-checker" class="text-slate-300">Toxicity</a>
+        </div>
+    </div>
+</nav>
+
+<header class="bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-950 text-white py-10 px-6 text-center">
+    <h1 class="text-3xl font-black mb-2">Clinical Intelligence Hub</h1>
+    <p class="text-slate-400 text-sm font-light">ART Drug-Drug Interaction & Toxicity Manager</p>
+</header>
+
+<main class="max-w-5xl mx-auto px-4 -mt-6 space-y-6 pb-12">
+    
+    <!-- INTERACTION AUDITOR -->
+    <section id="ai-tools" class="bg-white rounded-3xl shadow-xl p-6 ai-glow">
+        <h2 class="text-xl font-bold mb-4 flex items-center gap-2">✨ Interaction Auditor</h2>
+        
+        <div class="space-y-4">
+            <label class="block text-xs font-bold text-slate-500 uppercase">Select Medication Pairing</label>
+            <select id="medPairSelect" class="w-full p-4 border border-slate-200 rounded-2xl bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="lpv_midazolam">PIs (LPV/r, ATV/r) + Midazolam</option>
+                <option value="lpv_statin">PIs (LPV/r, ATV/r) + Simvastatin</option>
+                <option value="dtg_antacid">DTG + Antacids/Iron (Cations)</option>
+                <option value="dtg_metformin">DTG + Metformin</option>
+                <option value="efv_rifampicin">EFV + Rifampicin</option>
+                <option value="tdf_ampho">TDF + Amphotericin B</option>
+            </select>
+
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="runAudit()" class="bg-blue-600 text-white font-bold py-3 rounded-xl text-sm">Audit Risk</button>
+                <button onclick="runCounsel()" class="bg-slate-800 text-white font-bold py-3 rounded-xl text-sm">Counseling Script</button>
+            </div>
+        </div>
+
+        <div id="auditResult" class="hidden mt-6 space-y-4">
+            <div class="p-4 bg-red-50 border-l-4 border-red-500 rounded-r-xl">
+                <p class="text-xs font-bold text-red-600 uppercase">Clinical Consequence</p>
+                <p id="consequenceText" class="text-sm text-slate-800 mt-1"></p>
+            </div>
+            <div class="p-4 bg-emerald-50 border-l-4 border-emerald-500 rounded-r-xl">
+                <p class="text-xs font-bold text-emerald-600 uppercase">Management Advice</p>
+                <p id="managementText" class="text-sm text-slate-800 mt-1"></p>
+            </div>
+            <div id="scriptBox" class="hidden p-4 bg-blue-50 border-l-4 border-blue-500 rounded-r-xl italic text-sm text-blue-900">
+                <p id="scriptText"></p>
+            </div>
+        </div>
+    </section>
+
+    <!-- TOXICITY CHECKER -->
+    <section id="toxicity-checker" class="bg-white rounded-3xl shadow-xl p-6">
+        <h2 class="text-xl font-bold mb-4">✨ Toxicity Identifier</h2>
+        <input type="text" id="toxInput" onkeyup="searchTox()" placeholder="Search symptom (e.g. nightmares, yellow eyes, rash)..." 
+               class="w-full p-4 border border-slate-200 rounded-xl bg-slate-50 text-sm outline-none">
+        <div id="toxResults" class="mt-4 space-y-2"></div>
+    </section>
+
+</main>
+
+<script>
+    const ddiData = {
+        lpv_midazolam: {
+            risk: "Severe respiratory depression. PIs significantly increase Midazolam levels.",
+            action: "Contraindicated. Use shorter-acting agents or avoid entirely.",
+            script: "This sedative cannot be used with your HIV medicine as it will stay in your system too long and affect your breathing."
+        },
+        dtg_antacid: {
+            risk: "Magnesium/Aluminum binds to Dolutegravir, preventing absorption.",
+            action: "Give DTG 2 hours before or 6 hours after antacids.",
+            script: "Your indigestion medicine stops your HIV pill from entering your blood. Take the HIV pill at least 2 hours before the antacid."
+        },
+        lpv_statin: {
+            risk: "Increased risk of myopathy and rhabdomyolysis.",
+            action: "Avoid Simvastatin/Lovastatin. Use Atorvastatin with caution at lowest dose.",
+            script: "This cholesterol pill reacts badly with your HIV meds and can hurt your muscles. We need to use a safer alternative."
+        }
+    };
+
+    const toxData = [
+        { sym: "Nightmares / Vivid Dreams", drug: "Efavirenz (EFV)", note: "Usually resolves in 2-4 weeks. Take on empty stomach at bedtime." },
+        { sym: "Yellow Eyes (Jaundice)", drug: "Atazanavir (ATV) or Nevirapine (NVP)", note: "Check LFTs. If ATV, often benign. If NVP, stop immediately." },
+        { sym: "Tingling / Numbness in feet", drug: "Stavudine (d4T)", note: "Peripheral neuropathy. Consider switching to TDF or ABC." },
+        { sym: "Pale / Low Blood", drug: "Zidovudine (AZT)", note: "Bone marrow suppression/Anemia. Monitor Hemoglobin." }
+    ];
+
+    function runAudit() {
+        const val = document.getElementById('medPairSelect').value;
+        document.getElementById('auditResult').classList.remove('hidden');
+        document.getElementById('consequenceText').innerText = ddiData[val].risk;
+        document.getElementById('managementText').innerText = ddiData[val].action;
+        document.getElementById('scriptBox').classList.add('hidden');
+    }
+
+    function runCounsel() {
+        const val = document.getElementById('medPairSelect').value;
+        document.getElementById('auditResult').classList.remove('hidden');
+        document.getElementById('scriptBox').classList.remove('hidden');
+        document.getElementById('scriptText').innerText = '"' + ddiData[val].script + '"';
+    }
+
+    function searchTox() {
+        const input = document.getElementById('toxInput').value.toLowerCase();
+        const results = document.getElementById('toxResults');
+        results.innerHTML = '';
+        if(input.length < 2) return;
+
+        toxData.forEach(item => {
+            if(item.sym.toLowerCase().includes(input)) {
+                results.innerHTML += `
+                    <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                        <p class="font-bold text-blue-700">${item.drug}</p>
+                        <p class="text-xs text-slate-600">${item.note}</p>
+                    </div>`;
+            }
+        });
+    }
+</script>
+</body>
+</html>
